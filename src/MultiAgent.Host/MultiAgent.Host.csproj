@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>MultiAgent.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiAgent.Core\MultiAgent.Core.csproj" />
+
+    <!-- SignalR para output em tempo real -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
+
+    <!-- Output rico no terminal -->
+    <PackageReference Include="Spectre.Console" Version="0.54.1-alpha.0.68" />
+
+    <!-- Logging estruturado -->
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
+
+
+ 
+    <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="10.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.4" />
+  </ItemGroup>
+
+</Project>

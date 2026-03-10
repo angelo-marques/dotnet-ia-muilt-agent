@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>MultiAgent.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn - análise e compilação em memória -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0-2.final" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0-2.final">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Microsoft Extensions AI - abstração universal de LLM -->
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.3.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Ollama" Version="9.7.0-preview.1.25356.2" />
+
+    <!-- Comunicação entre agentes -->
+    <PackageReference Include="System.Threading.Channels" Version="11.0.0-preview.1.26104.118" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="11.0.0-preview.1.26104.118" />
+
+    <!-- Serialização -->
+    <PackageReference Include="System.Text.Json" Version="11.0.0-preview.1.26104.118" />
+
+    <!-- Logging -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0-preview.1.26104.118" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.1.26104.118" />
+  </ItemGroup>
+
+</Project>

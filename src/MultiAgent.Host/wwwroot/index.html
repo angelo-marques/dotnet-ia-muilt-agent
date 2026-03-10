@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Agent System Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e;
+      --green: #3fb950; --yellow: #d29922; --red: #f85149;
+      --blue: #58a6ff; --purple: #bc8cff; --orange: #ffa657;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+    header h1 { font-size: 18px; color: var(--blue); }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .badge.connected { background: #1a3a1a; color: var(--green); }
+    .badge.disconnected { background: #3a1a1a; color: var(--red); }
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 0; height: calc(100vh - 60px); }
+    .feed { padding: 0; overflow-y: auto; border-right: 1px solid var(--border); }
+    .sidebar { padding: 16px; overflow-y: auto; }
+    .feed-header { position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); z-index: 10; }
+    .message { padding: 8px 16px; border-bottom: 1px solid #21262d; display: flex; gap: 10px; align-items: flex-start; transition: background .1s; }
+    .message:hover { background: #1c2128; }
+    .msg-time { color: var(--muted); font-size: 11px; min-width: 80px; padding-top: 2px; }
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-route { font-size: 11px; margin-bottom: 4px; }
+    .msg-from { color: var(--yellow); font-weight: bold; }
+    .msg-to { color: var(--blue); }
+    .msg-content { font-size: 12px; color: var(--text); word-break: break-word; line-height: 1.5; }
+    .msg-type { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; font-weight: bold; }
+    .type-Complete { background: #1a3a1a; color: var(--green); }
+    .type-Error { background: #3a1a1a; color: var(--red); }
+    .type-Escalation { background: #3a2a0a; color: var(--orange); }
+    .type-Status { background: #1a2a3a; color: var(--blue); }
+    .type-Task { background: #2a1a3a; color: var(--purple); }
+    .type-Correction { background: #3a2a1a; color: var(--orange); }
+    .agents-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .agent-card .name { font-size: 11px; font-weight: bold; color: var(--blue); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .agent-card .status { font-size: 10px; color: var(--muted); }
+    .agent-card.active { border-color: var(--green); }
+    .agent-card.error { border-color: var(--red); }
+    .stats { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    .stats h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+    .stat-label { color: var(--muted); }
+    .stat-value { color: var(--text); font-weight: bold; }
+    .generate-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .generate-box h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px; font-family: inherit; font-size: 12px; resize: vertical; min-height: 80px; }
+    textarea:focus { outline: none; border-color: var(--blue); }
+    button { width: 100%; background: var(--blue); color: #000; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 8px; transition: opacity .2s; }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🤖 Multi-Agent System</h1>
+  <span id="conn-badge" class="badge disconnected">⚫ Desconectado</span>
+  <span style="margin-left:auto; color: var(--muted); font-size:12px" id="msg-count">0 mensagens</span>
+</header>
+
+<div class="layout">
+  <!-- Feed de mensagens -->
+  <div class="feed">
+    <div class="feed-header">
+      <span>📡 Feed em tempo real</span>
+      <button onclick="clearFeed()" style="width:auto;padding:4px 12px;font-size:11px;background:transparent;color:var(--muted);border:1px solid var(--border)">Limpar</button>
+    </div>
+    <div id="feed-content">
+      <div class="empty">Aguardando mensagens dos agentes...</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Agentes -->
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Agentes</div>
+    <div class="agents-grid" id="agents-grid">
+      <!-- gerado via JS -->
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <h3>Estatísticas</h3>
+      <div class="stat-row"><span class="stat-label">Mensagens</span><span class="stat-value" id="s-messages">0</span></div>
+      <div class="stat-row"><span class="stat-label">Concluídos</span><span class="stat-value" id="s-complete" style="color:var(--green)">0</span></div>
+      <div class="stat-row"><span class="stat-label">Erros</span><span class="stat-value" id="s-errors" style="color:var(--red)">0</span></div>
+      <div class="stat-row"><span class="stat-label">Escaladas</span><span class="stat-value" id="s-escalations" style="color:var(--orange)">0</span></div>
+    </div>
+
+    <!-- Gerar -->
+    <div class="generate-box">
+      <h3>Gerar Sistema</h3>
+      <textarea id="gen-input" placeholder="Descreva o sistema que deseja gerar...&#10;Ex: Sistema de gerenciamento de pedidos com pagamento"></textarea>
+      <button id="gen-btn" onclick="generateSystem()">▶ Gerar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const AGENTS = ['ArchitectAgent','DecomposerAgent','CodeGeneratorAgent',
+    'RoslynValidatorAgent','ReviewerAgent','TestAgent'];
+
+  const stats = { messages: 0, complete: 0, errors: 0, escalations: 0 };
+  const agentStatus = {};
+  let firstMessage = true;
+
+  // Inicializa cards dos agentes
+  const grid = document.getElementById('agents-grid');
+  AGENTS.forEach(name => {
+    agentStatus[name] = 'idle';
+    const short = name.replace('Agent', '');
+    grid.innerHTML += `<div class="agent-card" id="card-${name}">
+      <div class="name">${short}</div>
+      <div class="status">⏸ Idle</div>
+    </div>`;
+  });
+
+  // Conexão SignalR
+  const conn = new signalR.HubConnectionBuilder()
+    .withUrl('/hubs/agents')
+    .withAutomaticReconnect()
+    .build();
+
+  conn.on('AgentMessage', (msg) => {
+    if (firstMessage) {
+      document.getElementById('feed-content').innerHTML = '';
+      firstMessage = false;
+    }
+    addMessage(msg);
+    updateStats(msg);
+    updateAgentCard(msg);
+  });
+
+  conn.onreconnected(() => updateBadge(true));
+  conn.onclose(() => updateBadge(false));
+
+  conn.start()
+    .then(() => updateBadge(true))
+    .catch(() => updateBadge(false));
+
+  function updateBadge(connected) {
+    const b = document.getElementById('conn-badge');
+    b.className = 'badge ' + (connected ? 'connected' : 'disconnected');
+    b.textContent = connected ? '🟢 Conectado' : '⚫ Desconectado';
+  }
+
+  function addMessage(msg) {
+    const feed = document.getElementById('feed-content');
+    const div = document.createElement('div');
+    div.className = 'message';
+
+    const typeClass = 'type-' + (msg.type || 'Status');
+    const content = msg.content?.length > 200
+      ? msg.content.substring(0, 200) + '...'
+      : msg.content;
+
+    div.innerHTML = `
+      <div class="msg-time">${msg.timestamp}</div>
+      <div class="msg-body">
+        <div class="msg-route">
+          <span class="msg-from">${msg.from}</span>
+          <span style="color:var(--muted)"> → </span>
+          <span class="msg-to">${msg.to}</span>
+          <span class="msg-type ${typeClass}">${msg.type}</span>
+        </div>
+        <div class="msg-content">${escHtml(content)}</div>
+      </div>`;
+
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+
+    stats.messages++;
+    document.getElementById('msg-count').textContent = stats.messages + ' mensagens';
+  }
+
+  function updateStats(msg) {
+    if (msg.type === 'Complete') stats.complete++;
+    if (msg.type === 'Error') stats.errors++;
+    if (msg.type === 'Escalation') stats.escalations++;
+    document.getElementById('s-messages').textContent = stats.messages;
+    document.getElementById('s-complete').textContent = stats.complete;
+    document.getElementById('s-errors').textContent = stats.errors;
+    document.getElementById('s-escalations').textContent = stats.escalations;
+  }
+
+  function updateAgentCard(msg) {
+    const card = document.getElementById('card-' + msg.from);
+    if (!card) return;
+    const statusEl = card.querySelector('.status');
+
+    if (msg.type === 'Complete') {
+      card.className = 'agent-card';
+      statusEl.textContent = '✅ Done';
+    } else if (msg.type === 'Error') {
+      card.className = 'agent-card error';
+      statusEl.textContent = '❌ Erro';
+    } else if (msg.type === 'Status' || msg.type === 'Task') {
+      card.className = 'agent-card active';
+      statusEl.textContent = '⚡ Ativo';
+    }
+  }
+
+  async function generateSystem() {
+    const input = document.getElementById('gen-input').value.trim();
+    if (!input) return;
+
+    const btn = document.getElementById('gen-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Gerando...';
+
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input })
+      });
+      const data = await resp.json();
+      btn.textContent = `✅ ${data.filesGenerated} arquivos gerados`;
+    } catch (e) {
+      btn.textContent = '❌ Erro — verifique o console';
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = '▶ Gerar';
+      }, 3000);
+    }
+  }
+
+  function clearFeed() {
+    document.getElementById('feed-content').innerHTML =
+      '<div class="empty">Feed limpo.</div>';
+    firstMessage = false;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
