@@ -1,6 +1,7 @@
 # 🤖 dotnet-ai-multi-agent
 
-Sistema multi-agente em C# / .NET 9 para geração automatizada de sistemas de software com garantia de qualidade e convergência.
+Sistema multi-agente em C# / .NET 9 para geração automatizada de sistemas de software com garantia de qualidade. Clean Architecture com validação em 5 gates (compilação, null safety, code review, cobertura de testes e arquitetura).
+
 
 ---
 
